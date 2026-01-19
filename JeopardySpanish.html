@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Batalla de Babel - Jeopardy Léxico</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+
+    #game-container {
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #game-board-container {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    h1 {
+      margin: 10px 0;
+      font-size: 22px;
+    }
+
+    .top-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      margin: 10px 0;
+    }
+
+    .top-controls label {
+      font-size: 14px;
+    }
+
+    .top-controls input[type="number"],
+    .top-controls select {
+      padding: 4px;
+      font-size: 14px;
+    }
+
+    .top-controls input[type="checkbox"] {
+      transform: scale(1.2);
+      margin-right: 5px;
+    }
+
+    #timer-display {
+      font-weight: bold;
+      font-size: 18px;
+      color: #cc0000;
+    }
+
+    #voice-status {
+      font-size: 13px;
+      color: #555;
+    }
+
+    #jeopardy-board {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 5px;
+      width: 100%;
+      height: 65vh;
+      max-width: 100%;
+      overflow-y: auto;
+    }
+
+    .card {
+      background-color: #00274C;
+      color: white;
+      font-size: 1rem;
+      border-radius: 5px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 10px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .card.flipped {
+      background-color: #FFCB05;
+      color: black;
+    }
+
+    .category {
+      background-color: #3D3D3D;
+      font-weight: bold;
+    }
+
+    #setup-container {
+      margin-top: 10px;
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #setup-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    #board-setup {
+      flex: 1;
+      padding: 5px;
+      min-width: 250px;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 6px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .instructions {
+      font-size: 12px;
+      width: 100%;
+      max-width: 600px;
+      background: #fafafa;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px;
+      margin-top: 10px;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #score-table {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    #reset-button {
+      padding: 10px 15px;
+      font-size: 14px;
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .team-row {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+      margin: 5px 0;
+    }
+
+    .team-number {
+      width: 20px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .team-name, .team-score {
+      flex: 1;
+      margin: 0 5px;
+      padding: 5px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    #results-tally {
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    #results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    #results-table th, #results-table td {
+      border: 1px solid #ccc;
+      padding: 4px;
+    }
+
+    #results-table th {
+      background-color: #eee;
+    }
+
+    @media (max-width: 768px) {
+      #game-container {
+        flex-direction: column;
+        height: auto;
+      }
+
+      #jeopardy-board {
+        grid-template-columns: repeat(2, 1fr);
+        height: auto;
+      }
+
+      .card {
+        font-size: 1.1rem;
+        padding: 14px;
+      }
+
+      #score-table {
+        order: -1;
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .team-row {
+        width: 45%;
+        margin: 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="top-controls">
+  <label>Temporizador: <input type="number" id="timer-seconds" value="60" min="10" step="5"> seg</label>
+  <span id="timer-display">1:00</span>
+  <label><input type="checkbox" id="sound-toggle" checked> Sonido activado</label>
+  <label><input type="checkbox" id="negative-toggle"> Permitir puntuación negativa</label>
+  <label>Dobles Diarios:
+    <select id="daily-double-count">
+      <option value="0">0</option>
+      <option value="1" selected>1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+    </select>
+  </label>
+  <span id="voice-status">🔊 Voz: Activada</span>
+</div>
+<div id="game-container">
+  <div id="game-board-container">
+    <h1>Batalla de Babel - Jeopardy Léxico</h1>
+    <div id="jeopardy-board"></div>
+
+    <div id="setup-container">
+      <div id="setup-controls">
+        <input type="text" id="board-setup" placeholder="Introduce datos del tablero en formato JSON" />
+        <button onclick="setupBoard()">Crear tablero</button>
+        <button onclick="printQA()">Imprimir P+R para el presentador</button>
+      </div>
+      <details class="instructions">
+        <summary><strong>¿Necesitas ayuda con el formato del tablero?</strong></summary>
+        <pre style="white-space: pre-wrap;">
+{
+  "Gramática": {
+    "200": "¿Qué es un sustantivo?|Es una palabra que nombra una persona, lugar o cosa.",
+    "400": "¿Qué es un adjetivo?|Es una palabra que describe un sustantivo.",
+    ...
+  }
+}
+        </pre>
+      </details>
+    </div>
+  </div>
+
+  <div id="score-table">
+    <button id="reset-button" onclick="resetGame()">Reiniciar juego</button>
+    <h2>Puntajes de los equipos</h2>
+
+    <div class="team-row" style="background-color: #ff9999;">
+      <div class="team-number">1</div>
+      <input type="text" class="team-name" value="Equipo 1" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #99ccff;">
+      <div class="team-number">2</div>
+      <input type="text" class="team-name" value="Equipo 2" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ccffcc;">
+      <div class="team-number">3</div>
+      <input type="text" class="team-name" value="Equipo 3" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ffcc99;">
+      <div class="team-number">4</div>
+      <input type="text" class="team-name" value="Equipo 4" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ccccff;">
+      <div class="team-number">5</div>
+      <input type="text" class="team-name" value="Equipo 5" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ffccff;">
+      <div class="team-number">6</div>
+      <input type="text" class="team-name" value="Equipo 6" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+
+    <div id="results-tally">
+      <h2>Historial de respuestas</h2>
+      <table id="results-table">
+        <thead>
+          <tr>
+            <th>Categoría</th>
+            <th>Cantidad</th>
+            <th>Equipo</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+let datosIniciales = {
+  "Categoría 1": { "200": "P|R", "400": "P|R", "600": "P|R", "800": "P|R", "1000": "P|R" },
+  "Categoría 2": { "200": "P|R", "400": "P|R", "600": "P|R", "800": "P|R", "1000": "P|R" },
+  "Categoría 3": { "200": "P|R", "400": "P|R", "600": "P|R", "800": "P|R", "1000": "P|R" },
+  "Categoría 4": { "200": "P|R", "400": "P|R", "600": "P|R", "800": "P|R", "1000": "P|R" },
+  "Categoría 5": { "200": "P|R", "400": "P|R", "600": "P|R", "800": "P|R", "1000": "P|R" },
+  "Categoría 6": { "200": "P|R", "400": "P|R", "600": "P|R", "800": "P|R", "1000": "P|R" }
+};
+
+let datosTablero = JSON.parse(JSON.stringify(datosIniciales));
+let doblesDiarios = new Set();
+let temporizador = null;
+let duracionTemporizador = 60;
+
+function formatearTiempo(segundos) {
+  const min = Math.floor(segundos / 60);
+  const seg = segundos % 60;
+  return `${min}:${seg < 10 ? "0" + seg : seg}`;
+}
+
+function hablar(texto) {
+  if (!document.getElementById("sound-toggle").checked) return;
+  window.speechSynthesis.cancel();
+  const frase = new SpeechSynthesisUtterance(texto);
+  frase.lang = "es-ES";
+  window.speechSynthesis.speak(frase);
+}
+
+function iniciarTemporizador() {
+  clearInterval(temporizador);
+  let segundos = parseInt(document.getElementById("timer-seconds").value) || 60;
+  duracionTemporizador = segundos;
+  const display = document.getElementById("timer-display");
+  display.textContent = formatearTiempo(segundos);
+
+  temporizador = setInterval(() => {
+    segundos--;
+    display.textContent = formatearTiempo(segundos);
+    if (segundos <= 0) {
+      clearInterval(temporizador);
+      display.textContent = "¡Tiempo!";
+      hablar("¡Se acabó el tiempo!");
+    }
+  }, 1000);
+}
+
+function obtenerCantidadDoblesDiarios() {
+  return parseInt(document.getElementById("daily-double-count").value) || 0;
+}
+
+function generarTablero() {
+  const tablero = document.getElementById("jeopardy-board");
+  tablero.innerHTML = '';
+  doblesDiarios.clear();
+
+  let celdasElegibles = [];
+  Object.keys(datosTablero).forEach(cat => {
+    ["600", "800", "1000"].forEach(valor => {
+      celdasElegibles.push({ categoria: cat, cantidad: valor });
+    });
+  });
+
+  const cantidad = obtenerCantidadDoblesDiarios();
+  while (doblesDiarios.size < cantidad && celdasElegibles.length > 0) {
+    const idx = Math.floor(Math.random() * celdasElegibles.length);
+    const celda = celdasElegibles[idx];
+    doblesDiarios.add(`${celda.categoria}|${celda.cantidad}`);
+    celdasElegibles.splice(idx, 1);
+  }
+
+  Object.keys(datosTablero).forEach(cat => {
+    const cabecera = document.createElement('div');
+    cabecera.classList.add('card', 'category');
+    cabecera.textContent = cat;
+    tablero.appendChild(cabecera);
+  });
+
+  const valores = ["200", "400", "600", "800", "1000"];
+  valores.forEach(valor => {
+    Object.keys(datosTablero).forEach(cat => {
+      const carta = document.createElement('div');
+      carta.className = "card";
+      carta.dataset.categoria = cat;
+      carta.dataset.valor = valor;
+      carta.dataset.esDoble = doblesDiarios.has(`${cat}|${valor}`);
+      const [pregunta, respuesta] = (datosTablero[cat][valor] || "Sin pregunta|Sin respuesta").split("|");
+      carta.dataset.pregunta = pregunta;
+      carta.dataset.respuesta = respuesta;
+      carta.dataset.volteos = 0;
+      carta.textContent = `$${valor}`;
+      carta.onclick = () => voltearCarta(carta);
+      tablero.appendChild(carta);
+    });
+  });
+}
+
+function voltearCarta(carta) {
+  const conteo = +carta.dataset.volteos;
+  if (conteo === 0) {
+    carta.classList.add("flipped");
+    carta.dataset.volteos = 1;
+
+    if (carta.dataset.esDoble === "true") {
+      hablar("¡Doble Diario!");
+      let equipo = prompt("¡Doble Diario! ¿Quién responde? (nombre o número)");
+      if (!equipo) return;
+
+      let maxApuesta = 0;
+      const equipos = document.querySelectorAll(".team-row");
+      equipos.forEach((fila, i) => {
+        const numero = (i + 1).toString();
+        const nombre = fila.querySelector(".team-name").value.trim().toLowerCase();
+        const puntaje = parseInt(fila.querySelector(".team-score").value) || 0;
+        if (nombre === equipo.trim().toLowerCase() || numero === equipo.trim()) {
+          maxApuesta = Math.max(500, puntaje);
+        }
+      });
+
+      let apuesta = prompt(`Introduce tu apuesta (máximo $${maxApuesta}):`);
+      apuesta = parseInt(apuesta);
+      if (isNaN(apuesta) || apuesta < 0 || apuesta > maxApuesta) {
+        alert("Apuesta inválida.");
+        return;
+      }
+
+      carta.dataset.apuesta = apuesta;
+      carta.dataset.equipoDoble = equipo;
+      carta.textContent = `Doble Diario:\n${carta.dataset.pregunta}`;
+      hablar(`Doble Diario para ${equipo}. Apuesta de ${apuesta} puntos. ${carta.dataset.pregunta}`);
+    } else {
+      carta.textContent = carta.dataset.pregunta;
+      hablar(`${carta.dataset.categoria}, ${carta.dataset.valor} puntos. ${carta.dataset.pregunta}`);
+      iniciarTemporizador();
+    }
+  } else if (conteo === 1) {
+    carta.textContent = carta.dataset.respuesta;
+    carta.dataset.volteos = 2;
+    clearInterval(temporizador);
+    hablar(`Respuesta: ${carta.dataset.respuesta}`);
+    setTimeout(() => {
+      if (carta.dataset.esDoble === "true") {
+        manejarDobleDiario(carta);
+      } else {
+        seleccionarEquipo(carta.dataset.categoria, carta.dataset.valor);
+      }
+    }, 800);
+  } else {
+    carta.classList.remove("flipped");
+    carta.textContent = `$${carta.dataset.valor}`;
+    carta.dataset.volteos = 0;
+    clearInterval(temporizador);
+    document.getElementById("timer-display").textContent = formatearTiempo(duracionTemporizador);
+  }
+}
+
+function manejarDobleDiario(carta) {
+  const entrada = carta.dataset.equipoDoble;
+  const apuesta = parseInt(carta.dataset.apuesta);
+  const equipos = document.querySelectorAll(".team-row");
+
+  equipos.forEach((fila, index) => {
+    const numero = (index + 1).toString();
+    const nombreInput = fila.querySelector(".team-name");
+    const puntajeInput = fila.querySelector(".team-score");
+    if (
+      nombreInput.value.trim().toLowerCase() === entrada.trim().toLowerCase() ||
+      numero === entrada.trim()
+    ) {
+      const actual = parseInt(puntajeInput.value) || 0;
+      const correcto = confirm("¿La respuesta fue correcta?");
+      if (correcto) {
+        puntajeInput.value = actual + apuesta;
+        hablar(`${nombreInput.value} gana ${apuesta} puntos`);
+      } else {
+        puntajeInput.value = actual - apuesta;
+        hablar(`${nombreInput.value} pierde ${apuesta} puntos`);
+      }
+      const filaRes = document.createElement("tr");
+      filaRes.innerHTML = `<td>${carta.dataset.categoria}</td><td>${apuesta}</td><td>${entrada}</td>`;
+      document.getElementById("results-body").appendChild(filaRes);
+    }
+  });
+}
+
+function seleccionarEquipo(categoria, valor) {
+  const entrada = prompt("¿Qué equipo respondió correctamente? (nombre o número)");
+  if (!entrada) return;
+  const puntos = parseInt(valor);
+  const equipos = document.querySelectorAll(".team-row");
+  let encontrado = false;
+
+  equipos.forEach((fila, index) => {
+    const numero = (index + 1).toString();
+    const nombreInput = fila.querySelector(".team-name");
+    const puntajeInput = fila.querySelector(".team-score");
+
+    if (
+      nombreInput.value.trim().toLowerCase() === entrada.trim().toLowerCase() ||
+      numero === entrada.trim()
+    ) {
+      let actual = parseInt(puntajeInput.value) || 0;
+      const permitirNegativos = document.getElementById("negative-toggle").checked;
+      const correcto = confirm("¿La respuesta fue correcta?");
+      if (correcto) {
+        puntajeInput.value = actual + puntos;
+        hablar(`${nombreInput.value} gana ${puntos} puntos`);
+      } else if (permitirNegativos) {
+        puntajeInput.value = actual - puntos;
+        hablar(`${nombreInput.value} pierde ${puntos} puntos`);
+      }
+      encontrado = true;
+    }
+  });
+
+  if (encontrado) {
+    const filaRes = document.createElement("tr");
+    filaRes.innerHTML = `<td>${categoria}</td><td>$${valor}</td><td>${entrada}</td>`;
+    document.getElementById("results-body").appendChild(filaRes);
+  }
+}
+
+function setupBoard() {
+  const input = document.getElementById("board-setup").value;
+  try {
+    datosTablero = JSON.parse(input);
+    generarTablero();
+    document.getElementById("board-setup").value = '';
+    hablar("Tablero configurado.");
+  } catch {
+    alert("Formato JSON inválido.");
+  }
+}
+
+function resetGame() {
+  datosTablero = JSON.parse(JSON.stringify(datosIniciales));
+  generarTablero();
+  document.getElementById("results-body").innerHTML = '';
+  document.querySelectorAll(".team-score").forEach(input => input.value = 0);
+  document.getElementById("timer-display").textContent = formatearTiempo(
+    parseInt(document.getElementById("timer-seconds").value) || 60
+  );
+  clearInterval(temporizador);
+}
+
+function printQA() {
+  let html = `<html><head><title>Preguntas y Respuestas</title></head><body><h2>Hoja del presentador</h2>`;
+  for (const categoria in datosTablero) {
+    html += `<h3>${categoria}</h3><ul>`;
+    for (const cantidad in datosTablero[categoria]) {
+      const [p, r] = datosTablero[categoria][cantidad].split("|");
+      html += `<li><strong>$${cantidad}:</strong> <em>${p}</em><br>Respuesta: ${r}</li>`;
+    }
+    html += `</ul>`;
+  }
+  html += `</body></html>`;
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  win.print();
+}
+
+document.getElementById("sound-toggle").addEventListener("change", () => {
+  document.getElementById("voice-status").textContent =
+    document.getElementById("sound-toggle").checked ? "🔊 Voz: Activada" : "🔇 Voz: Desactivada";
+});
+
+generarTablero();
+</script>
+</body>
+</html>

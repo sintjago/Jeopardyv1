@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Babel Battle - Lexicon Jeopardy</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+
+    #game-container {
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #game-board-container {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    h1 {
+      margin: 10px 0;
+      font-size: 22px;
+    }
+
+    .top-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      margin: 10px 0;
+    }
+
+    .top-controls label {
+      font-size: 14px;
+    }
+
+    .top-controls input[type="number"],
+    .top-controls select {
+      padding: 4px;
+      font-size: 14px;
+    }
+
+    .top-controls input[type="checkbox"] {
+      transform: scale(1.2);
+      margin-right: 5px;
+    }
+
+    #timer-display {
+      font-weight: bold;
+      font-size: 18px;
+      color: #cc0000;
+    }
+
+    #voice-status {
+      font-size: 13px;
+      color: #555;
+    }
+
+    #jeopardy-board {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 5px;
+      width: 100%;
+      height: 65vh;
+      max-width: 100%;
+      overflow-y: auto;
+    }
+
+    .card {
+      background-color: #00274C;
+      color: white;
+      font-size: 1rem;
+      border-radius: 5px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 10px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .card.flipped {
+      background-color: #FFCB05;
+      color: black;
+    }
+
+    .card.daily-double {
+      background-color: #8B0000;
+    }
+
+    .category {
+      background-color: #3D3D3D;
+      font-weight: bold;
+    }
+
+    #setup-container {
+      margin-top: 10px;
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #setup-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    #board-setup {
+      flex: 1;
+      padding: 5px;
+      min-width: 250px;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 6px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .instructions {
+      font-size: 12px;
+      width: 100%;
+      max-width: 600px;
+      background: #fafafa;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px;
+      margin-top: 10px;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #score-table {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    #reset-button {
+      padding: 10px 15px;
+      font-size: 14px;
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .team-row {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+      margin: 5px 0;
+    }
+
+    .team-number {
+      width: 20px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .team-name, .team-score {
+      flex: 1;
+      margin: 0 5px;
+      padding: 5px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    #results-tally {
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    #results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    #results-table th, #results-table td {
+      border: 1px solid #ccc;
+      padding: 4px;
+    }
+
+    #results-table th {
+      background-color: #eee;
+    }
+
+    @media (max-width: 768px) {
+      #game-container {
+        flex-direction: column;
+        height: auto;
+      }
+
+      #jeopardy-board {
+        grid-template-columns: repeat(2, 1fr);
+        height: auto;
+      }
+
+      .card {
+        font-size: 1.1rem;
+        padding: 14px;
+      }
+
+      #score-table {
+        order: -1;
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .team-row {
+        width: 45%;
+        margin: 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="top-controls">
+  <label>Timer: <input type="number" id="timer-seconds" value="60" min="10" step="5"> sec</label>
+  <span id="timer-display">1:00</span>
+  <label><input type="checkbox" id="sound-toggle" checked> Sound On</label>
+  <label><input type="checkbox" id="negative-toggle"> Allow Negative</label>
+  <label>Daily Doubles:
+    <select id="daily-double-count">
+      <option value="0">0</option>
+      <option value="1" selected>1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+    </select>
+  </label>
+  <span id="voice-status">🔊 Voice: On</span>
+</div>
+<div id="game-container">
+  <div id="game-board-container">
+    <h1>Babel Battle - Lexicon Jeopardy</h1>
+    <div id="jeopardy-board"></div>
+
+    <div id="setup-container">
+      <div id="setup-controls">
+        <input type="text" id="board-setup" placeholder="Enter board data in JSON format here" />
+        <button onclick="setupBoard()">Set Up Board</button>
+        <button onclick="printQA()">Print Q/A for Announcer</button>
+      </div>
+      <details class="instructions">
+        <summary><strong>Need help formatting your board?</strong></summary>
+        <pre style="white-space: pre-wrap;">
+{
+  "Grammar": {
+    "200": "Define a noun|A noun is a person, place, or thing.",
+    "400": "What is an adjective?|A word that describes a noun.",
+    ...
+  }
+}
+        </pre>
+      </details>
+    </div>
+  </div>
+
+  <div id="score-table">
+    <button id="reset-button" onclick="resetGame()">Reset Game</button>
+    <h2>Team Scores</h2>
+    <div class="team-row" style="background-color: #ff9999;">
+      <div class="team-number">1</div>
+      <input type="text" class="team-name" value="Team 1" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #99ccff;">
+      <div class="team-number">2</div>
+      <input type="text" class="team-name" value="Team 2" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ccffcc;">
+      <div class="team-number">3</div>
+      <input type="text" class="team-name" value="Team 3" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ffcc99;">
+      <div class="team-number">4</div>
+      <input type="text" class="team-name" value="Team 4" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ccccff;">
+      <div class="team-number">5</div>
+      <input type="text" class="team-name" value="Team 5" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ffccff;">
+      <div class="team-number">6</div>
+      <input type="text" class="team-name" value="Team 6" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+
+    <div id="results-tally">
+      <h2>Results Tally</h2>
+      <table id="results-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Team</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+let initialBoardData = {
+  "Category 1": { "200": "Q|A", "400": "Q|A", "600": "Q|A", "800": "Q|A", "1000": "Q|A" },
+  "Category 2": { "200": "Q|A", "400": "Q|A", "600": "Q|A", "800": "Q|A", "1000": "Q|A" },
+  "Category 3": { "200": "Q|A", "400": "Q|A", "600": "Q|A", "800": "Q|A", "1000": "Q|A" },
+  "Category 4": { "200": "Q|A", "400": "Q|A", "600": "Q|A", "800": "Q|A", "1000": "Q|A" },
+  "Category 5": { "200": "Q|A", "400": "Q|A", "600": "Q|A", "800": "Q|A", "1000": "Q|A" },
+  "Category 6": { "200": "Q|A", "400": "Q|A", "600": "Q|A", "800": "Q|A", "1000": "Q|A" }
+};
+
+let boardData = JSON.parse(JSON.stringify(initialBoardData));
+let dailyDoubles = new Set();
+let timerInterval = null;
+let timerDuration = 60;
+
+function formatTime(seconds) {
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  return `${min}:${sec < 10 ? "0" + sec : sec}`;
+}
+
+function speak(text) {
+  if (!document.getElementById("sound-toggle").checked) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "en-US";
+  window.speechSynthesis.speak(utter);
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  let seconds = parseInt(document.getElementById("timer-seconds").value) || 60;
+  timerDuration = seconds;
+  const display = document.getElementById("timer-display");
+  display.textContent = formatTime(seconds);
+
+  timerInterval = setInterval(() => {
+    seconds--;
+    display.textContent = formatTime(seconds);
+    if (seconds <= 0) {
+      clearInterval(timerInterval);
+      display.textContent = "Time's up!";
+      speak("Time is up!");
+    }
+  }, 1000);
+}
+
+function getDailyDoubleCount() {
+  return parseInt(document.getElementById("daily-double-count").value) || 0;
+}
+
+function generateBoard() {
+  const board = document.getElementById("jeopardy-board");
+  board.innerHTML = '';
+  dailyDoubles.clear();
+
+  // Gather eligible spots (bottom rows)
+  let eligible = [];
+  Object.keys(boardData).forEach(category => {
+    ["600", "800", "1000"].forEach(value => {
+      eligible.push({ category, amount: value });
+    });
+  });
+
+  const count = getDailyDoubleCount();
+  while (dailyDoubles.size < count && eligible.length > 0) {
+    const idx = Math.floor(Math.random() * eligible.length);
+    const key = eligible[idx];
+    dailyDoubles.add(`${key.category}|${key.amount}`);
+    eligible.splice(idx, 1);
+  }
+
+  Object.keys(boardData).forEach(category => {
+    const header = document.createElement('div');
+    header.classList.add('card', 'category');
+    header.textContent = category;
+    board.appendChild(header);
+  });
+
+  const pointValues = ["200", "400", "600", "800", "1000"];
+  pointValues.forEach(amount => {
+    Object.keys(boardData).forEach(category => {
+      const card = document.createElement('div');
+      card.className = "card";
+      card.dataset.category = category;
+      card.dataset.amount = amount;
+      card.dataset.isDailyDouble = dailyDoubles.has(`${category}|${amount}`);
+      const [question, answer] = (boardData[category][amount] || "No question|No answer").split("|");
+      card.dataset.question = question;
+      card.dataset.answer = answer;
+      card.dataset.flips = 0;
+      card.textContent = `$${amount}`;
+      card.onclick = () => flipCard(card);
+      board.appendChild(card);
+    });
+  });
+}
+
+function flipCard(card) {
+  const flipCount = +card.dataset.flips;
+  if (flipCount === 0) {
+    card.classList.add("flipped");
+    card.dataset.flips = 1;
+
+    if (card.dataset.isDailyDouble === "true") {
+      speak("Daily Double!");
+      let team = prompt("Daily Double! Who is answering? (name or number)");
+      if (!team) return;
+
+      // Get current score for that team
+      let maxWager = 0;
+      const teams = document.querySelectorAll(".team-row");
+      teams.forEach((row, index) => {
+        const number = (index + 1).toString();
+        const nameInput = row.querySelector(".team-name");
+        const scoreInput = row.querySelector(".team-score");
+        if (
+          nameInput.value.trim().toLowerCase() === team.trim().toLowerCase() ||
+          number === team.trim()
+        ) {
+          const score = parseInt(scoreInput.value) || 0;
+          maxWager = Math.max(500, score);
+        }
+      });
+
+      let wager = prompt(`Enter your wager (max $${maxWager}):`);
+      wager = parseInt(wager);
+      if (isNaN(wager) || wager < 0 || wager > maxWager) {
+        alert("Invalid wager.");
+        return;
+      }
+
+      card.dataset.wager = wager;
+      card.dataset.dailyTeam = team;
+      card.textContent = `Daily Double:\n${card.dataset.question}`;
+      speak(`Daily Double for ${team}. Wager is ${wager} points. ${card.dataset.question}`);
+    } else {
+      card.textContent = card.dataset.question;
+      speak(`${card.dataset.category}, ${card.dataset.amount} points. ${card.dataset.question}`);
+      startTimer();
+    }
+  } else if (flipCount === 1) {
+    card.textContent = card.dataset.answer;
+    card.dataset.flips = 2;
+    clearInterval(timerInterval);
+    speak(`Answer: ${card.dataset.answer}`);
+    setTimeout(() => {
+      if (card.dataset.isDailyDouble === "true") {
+        handleDailyDouble(card);
+      } else {
+        selectTeam(card.dataset.category, card.dataset.amount);
+      }
+    }, 800);
+  } else {
+    card.classList.remove("flipped");
+    card.textContent = `$${card.dataset.amount}`;
+    card.dataset.flips = 0;
+    clearInterval(timerInterval);
+    document.getElementById("timer-display").textContent = formatTime(timerDuration);
+  }
+}
+
+function handleDailyDouble(card) {
+  const teamInput = card.dataset.dailyTeam;
+  const wager = parseInt(card.dataset.wager);
+  const teams = document.querySelectorAll(".team-row");
+
+  teams.forEach((row, index) => {
+    const number = (index + 1).toString();
+    const nameInput = row.querySelector(".team-name");
+    const scoreInput = row.querySelector(".team-score");
+    if (
+      nameInput.value.trim().toLowerCase() === teamInput.trim().toLowerCase() ||
+      number === teamInput.trim()
+    ) {
+      const currentScore = parseInt(scoreInput.value) || 0;
+      const correct = confirm("Was the answer correct?");
+      if (correct) {
+        scoreInput.value = currentScore + wager;
+        speak(`${nameInput.value} wins ${wager} points`);
+      } else {
+        scoreInput.value = currentScore - wager;
+        speak(`${nameInput.value} loses ${wager} points`);
+      }
+      const rowEl = document.createElement("tr");
+      rowEl.innerHTML = `<td>${card.dataset.category}</td><td>${wager}</td><td>${teamInput}</td>`;
+      document.getElementById("results-body").appendChild(rowEl);
+    }
+  });
+}
+
+function selectTeam(category, amount) {
+  const teamInput = prompt("Which team got it right? (name or number)");
+  if (!teamInput) return;
+  const amountValue = parseInt(amount);
+  const teams = document.querySelectorAll(".team-row");
+  let matched = false;
+
+  teams.forEach((row, index) => {
+    const number = (index + 1).toString();
+    const nameInput = row.querySelector(".team-name");
+    const scoreInput = row.querySelector(".team-score");
+
+    if (
+      nameInput.value.trim().toLowerCase() === teamInput.trim().toLowerCase() ||
+      number === teamInput.trim()
+    ) {
+      let currentScore = parseInt(scoreInput.value) || 0;
+      const allowNegative = document.getElementById("negative-toggle").checked;
+      const correct = confirm("Was the answer correct?");
+      if (correct) {
+        scoreInput.value = currentScore + amountValue;
+        speak(`${nameInput.value} wins ${amountValue} points`);
+      } else if (allowNegative) {
+        scoreInput.value = currentScore - amountValue;
+        speak(`${nameInput.value} loses ${amountValue} points`);
+      }
+      matched = true;
+    }
+  });
+
+  if (matched) {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${category}</td><td>$${amount}</td><td>${teamInput}</td>`;
+    document.getElementById("results-body").appendChild(row);
+  }
+}
+
+function setupBoard() {
+  const input = document.getElementById("board-setup").value;
+  try {
+    boardData = JSON.parse(input);
+    generateBoard();
+    document.getElementById("board-setup").value = '';
+    speak("Board has been set up.");
+  } catch {
+    alert("Invalid JSON format.");
+  }
+}
+
+function resetGame() {
+  boardData = JSON.parse(JSON.stringify(initialBoardData));
+  generateBoard();
+  document.getElementById("results-body").innerHTML = '';
+  document.querySelectorAll(".team-score").forEach(input => input.value = 0);
+  document.getElementById("timer-display").textContent = formatTime(
+    parseInt(document.getElementById("timer-seconds").value) || 60
+  );
+  clearInterval(timerInterval);
+}
+
+function printQA() {
+  let html = `<html><head><title>Announcer Sheet</title></head><body><h2>Question and Answer Sheet</h2>`;
+  for (const category in boardData) {
+    html += `<h3>${category}</h3><ul>`;
+    for (const amount in boardData[category]) {
+      const [q, a] = boardData[category][amount].split("|");
+      html += `<li><strong>$${amount}:</strong> <em>${q}</em><br>Answer: ${a}</li>`;
+    }
+    html += `</ul>`;
+  }
+  html += `</body></html>`;
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  win.print();
+}
+
+document.getElementById("sound-toggle").addEventListener("change", () => {
+  document.getElementById("voice-status").textContent =
+    document.getElementById("sound-toggle").checked ? "🔊 Voice: On" : "🔇 Voice: Off";
+});
+
+generateBoard();
+</script>
+</body>
+</html>
+

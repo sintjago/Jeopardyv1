@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>巴别塔对决 - 词汇知识竞赛</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+
+    #game-container {
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #game-board-container {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    h1 {
+      margin: 10px 0;
+      font-size: 22px;
+    }
+
+    .top-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      margin: 10px 0;
+    }
+
+    .top-controls label {
+      font-size: 14px;
+    }
+
+    .top-controls input[type="number"],
+    .top-controls select {
+      padding: 4px;
+      font-size: 14px;
+    }
+
+    .top-controls input[type="checkbox"] {
+      transform: scale(1.2);
+      margin-right: 5px;
+    }
+
+    #timer-display {
+      font-weight: bold;
+      font-size: 18px;
+      color: #cc0000;
+    }
+
+    #voice-status {
+      font-size: 13px;
+      color: #555;
+    }
+
+    #jeopardy-board {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 5px;
+      width: 100%;
+      height: 65vh;
+      max-width: 100%;
+      overflow-y: auto;
+    }
+
+    .card {
+      background-color: #00274C;
+      color: white;
+      font-size: 1rem;
+      border-radius: 5px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 10px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .card.flipped {
+      background-color: #FFCB05;
+      color: black;
+    }
+
+    .category {
+      background-color: #3D3D3D;
+      font-weight: bold;
+    }
+
+    #setup-container {
+      margin-top: 10px;
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #setup-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    #board-setup {
+      flex: 1;
+      padding: 5px;
+      min-width: 250px;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 6px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .instructions {
+      font-size: 12px;
+      width: 100%;
+      max-width: 600px;
+      background: #fafafa;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px;
+      margin-top: 10px;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #score-table {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    #reset-button {
+      padding: 10px 15px;
+      font-size: 14px;
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .team-row {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+      margin: 5px 0;
+    }
+
+    .team-number {
+      width: 20px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .team-name, .team-score {
+      flex: 1;
+      margin: 0 5px;
+      padding: 5px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    #results-tally {
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    #results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    #results-table th, #results-table td {
+      border: 1px solid #ccc;
+      padding: 4px;
+    }
+
+    #results-table th {
+      background-color: #eee;
+    }
+
+    @media (max-width: 768px) {
+      #game-container {
+        flex-direction: column;
+        height: auto;
+      }
+
+      #jeopardy-board {
+        grid-template-columns: repeat(2, 1fr);
+        height: auto;
+      }
+
+      .card {
+        font-size: 1.1rem;
+        padding: 14px;
+      }
+
+      #score-table {
+        order: -1;
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .team-row {
+        width: 45%;
+        margin: 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="top-controls">
+  <label>计时器：<input type="number" id="timer-seconds" value="60" min="10" step="5"> 秒</label>
+  <span id="timer-display">1:00</span>
+  <label><input type="checkbox" id="sound-toggle" checked> 启用语音</label>
+  <label><input type="checkbox" id="negative-toggle"> 允许扣分</label>
+  <label>每日双倍题：
+    <select id="daily-double-count">
+      <option value="0">0</option>
+      <option value="1" selected>1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+    </select>
+  </label>
+  <span id="voice-status">🔊 语音：开启</span>
+</div>
+<div id="game-container">
+  <div id="game-board-container">
+    <h1>巴别塔对决 – 词汇知识竞赛</h1>
+    <div id="jeopardy-board"></div>
+
+    <div id="setup-container">
+      <div id="setup-controls">
+        <input type="text" id="board-setup" placeholder="请以 JSON 格式输入题目数据" />
+        <button onclick="setupBoard()">生成题板</button>
+        <button onclick="printQA()">打印主持人问答</button>
+      </div>
+      <details class="instructions">
+        <summary><strong>题板 JSON 格式示例</strong></summary>
+        <pre style="white-space: pre-wrap;">
+{
+  "语法": {
+    "200": "什么是名词？|名词是指人、地点或事物的词。",
+    "400": "什么是形容词？|形容词用来描述名词。",
+    ...
+  }
+}
+        </pre>
+      </details>
+    </div>
+  </div>
+
+  <div id="score-table">
+    <button id="reset-button" onclick="resetGame()">重置游戏</button>
+    <h2>队伍得分</h2>
+
+    <div class="team-row" style="background-color: #ff9999;">
+      <div class="team-number">1</div>
+      <input type="text" class="team-name" value="队伍 1" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #99ccff;">
+      <div class="team-number">2</div>
+      <input type="text" class="team-name" value="队伍 2" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ccffcc;">
+      <div class="team-number">3</div>
+      <input type="text" class="team-name" value="队伍 3" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ffcc99;">
+      <div class="team-number">4</div>
+      <input type="text" class="team-name" value="队伍 4" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ccccff;">
+      <div class="team-number">5</div>
+      <input type="text" class="team-name" value="队伍 5" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ffccff;">
+      <div class="team-number">6</div>
+      <input type="text" class="team-name" value="队伍 6" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+
+    <div id="results-tally">
+      <h2>答题记录</h2>
+      <table id="results-table">
+        <thead>
+          <tr>
+            <th>类别</th>
+            <th>分值</th>
+            <th>队伍</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+let initialData = {
+  "类别 1": { "200": "问题|答案", "400": "问题|答案", "600": "问题|答案", "800": "问题|答案", "1000": "问题|答案" },
+  "类别 2": { "200": "问题|答案", "400": "问题|答案", "600": "问题|答案", "800": "问题|答案", "1000": "问题|答案" },
+  "类别 3": { "200": "问题|答案", "400": "问题|答案", "600": "问题|答案", "800": "问题|答案", "1000": "问题|答案" },
+  "类别 4": { "200": "问题|答案", "400": "问题|答案", "600": "问题|答案", "800": "问题|答案", "1000": "问题|答案" },
+  "类别 5": { "200": "问题|答案", "400": "问题|答案", "600": "问题|答案", "800": "问题|答案", "1000": "问题|答案" },
+  "类别 6": { "200": "问题|答案", "400": "问题|答案", "600": "问题|答案", "800": "问题|答案", "1000": "问题|答案" }
+};
+
+let boardData = JSON.parse(JSON.stringify(initialData));
+let dailyDoubles = new Set();
+let timer = null;
+let timerDuration = 60;
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s < 10 ? "0" + s : s}`;
+}
+
+function speak(text) {
+  if (!document.getElementById("sound-toggle").checked) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "zh-CN";
+  window.speechSynthesis.speak(utterance);
+}
+
+function startTimer() {
+  clearInterval(timer);
+  let sec = parseInt(document.getElementById("timer-seconds").value) || 60;
+  timerDuration = sec;
+  document.getElementById("timer-display").textContent = formatTime(sec);
+
+  timer = setInterval(() => {
+    sec--;
+    document.getElementById("timer-display").textContent = formatTime(sec);
+    if (sec <= 0) {
+      clearInterval(timer);
+      document.getElementById("timer-display").textContent = "时间到！";
+      speak("时间到！");
+    }
+  }, 1000);
+}
+
+function getDailyDoubleCount() {
+  return parseInt(document.getElementById("daily-double-count").value) || 0;
+}
+
+function generateBoard() {
+  const board = document.getElementById("jeopardy-board");
+  board.innerHTML = '';
+  dailyDoubles.clear();
+
+  let eligible = [];
+  Object.keys(boardData).forEach(cat => {
+    ["600", "800", "1000"].forEach(value => {
+      eligible.push({ cat, value });
+    });
+  });
+
+  const count = getDailyDoubleCount();
+  while (dailyDoubles.size < count && eligible.length > 0) {
+    const idx = Math.floor(Math.random() * eligible.length);
+    const { cat, value } = eligible[idx];
+    dailyDoubles.add(`${cat}|${value}`);
+    eligible.splice(idx, 1);
+  }
+
+  Object.keys(boardData).forEach(cat => {
+    const header = document.createElement("div");
+    header.classList.add("card", "category");
+    header.textContent = cat;
+    board.appendChild(header);
+  });
+
+  const values = ["200", "400", "600", "800", "1000"];
+  values.forEach(value => {
+    Object.keys(boardData).forEach(cat => {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.dataset.cat = cat;
+      card.dataset.value = value;
+      card.dataset.isDD = dailyDoubles.has(`${cat}|${value}`);
+      const [q, a] = (boardData[cat][value] || "无问题|无答案").split("|");
+      card.dataset.q = q;
+      card.dataset.a = a;
+      card.dataset.flips = 0;
+      card.textContent = `$${value}`;
+      card.onclick = () => flipCard(card);
+      board.appendChild(card);
+    });
+  });
+}
+
+function flipCard(card) {
+  const flips = +card.dataset.flips;
+  if (flips === 0) {
+    card.classList.add("flipped");
+    card.dataset.flips = 1;
+
+    if (card.dataset.isDD === "true") {
+      speak("每日双倍题！");
+      const team = prompt("每日双倍题！哪个队伍回答？（名称或编号）");
+      if (!team) return;
+
+      let max = 0;
+      document.querySelectorAll(".team-row").forEach((row, i) => {
+        const name = row.querySelector(".team-name").value.trim().toLowerCase();
+        const num = (i + 1).toString();
+        const score = parseInt(row.querySelector(".team-score").value) || 0;
+        if (name === team.trim().toLowerCase() || num === team.trim()) {
+          max = Math.max(500, score);
+        }
+      });
+
+      let bet = prompt(`请输入下注分数（最大：${max}）:`);
+      bet = parseInt(bet);
+      if (isNaN(bet) || bet < 0 || bet > max) {
+        alert("无效的分数。");
+        return;
+      }
+
+      card.dataset.bet = bet;
+      card.dataset.ddTeam = team;
+      card.textContent = `每日双倍：\n${card.dataset.q}`;
+      speak(`每日双倍题。${team} 队下注 ${bet} 分。问题：${card.dataset.q}`);
+    } else {
+      card.textContent = card.dataset.q;
+      speak(`${card.dataset.cat}，${card.dataset.value}分。问题：${card.dataset.q}`);
+      startTimer();
+    }
+  } else if (flips === 1) {
+    card.textContent = card.dataset.a;
+    card.dataset.flips = 2;
+    clearInterval(timer);
+    speak(`答案：${card.dataset.a}`);
+    setTimeout(() => {
+      if (card.dataset.isDD === "true") {
+        handleDailyDouble(card);
+      } else {
+        selectTeam(card.dataset.cat, card.dataset.value);
+      }
+    }, 800);
+  } else {
+    card.classList.remove("flipped");
+    card.textContent = `$${card.dataset.value}`;
+    card.dataset.flips = 0;
+    clearInterval(timer);
+    document.getElementById("timer-display").textContent = formatTime(timerDuration);
+  }
+}
+
+function handleDailyDouble(card) {
+  const team = card.dataset.ddTeam;
+  const bet = parseInt(card.dataset.bet);
+  document.querySelectorAll(".team-row").forEach((row, i) => {
+    const num = (i + 1).toString();
+    const nameInput = row.querySelector(".team-name");
+    const scoreInput = row.querySelector(".team-score");
+    if (
+      nameInput.value.trim().toLowerCase() === team.trim().toLowerCase() ||
+      num === team.trim()
+    ) {
+      const current = parseInt(scoreInput.value) || 0;
+      const correct = confirm("回答正确吗？");
+      if (correct) {
+        scoreInput.value = current + bet;
+        speak(`${nameInput.value} 队获得了 ${bet} 分`);
+      } else {
+        scoreInput.value = current - bet;
+        speak(`${nameInput.value} 队失去了 ${bet} 分`);
+      }
+      const rowEl = document.createElement("tr");
+      rowEl.innerHTML = `<td>${card.dataset.cat}</td><td>${bet}</td><td>${team}</td>`;
+      document.getElementById("results-body").appendChild(rowEl);
+    }
+  });
+}
+
+function selectTeam(cat, val) {
+  const team = prompt("哪个队伍答对了？（名称或编号）");
+  if (!team) return;
+  const value = parseInt(val);
+  document.querySelectorAll(".team-row").forEach((row, i) => {
+    const num = (i + 1).toString();
+    const nameInput = row.querySelector(".team-name");
+    const scoreInput = row.querySelector(".team-score");
+    if (
+      nameInput.value.trim().toLowerCase() === team.trim().toLowerCase() ||
+      num === team.trim()
+    ) {
+      let current = parseInt(scoreInput.value) || 0;
+      const allowNeg = document.getElementById("negative-toggle").checked;
+      const correct = confirm("回答正确吗？");
+      if (correct) {
+        scoreInput.value = current + value;
+        speak(`${nameInput.value} 队获得了 ${value} 分`);
+      } else if (allowNeg) {
+        scoreInput.value = current - value;
+        speak(`${nameInput.value} 队失去了 ${value} 分`);
+      }
+      const rowEl = document.createElement("tr");
+      rowEl.innerHTML = `<td>${cat}</td><td>$${val}</td><td>${team}</td>`;
+      document.getElementById("results-body").appendChild(rowEl);
+    }
+  });
+}
+
+function setupBoard() {
+  try {
+    boardData = JSON.parse(document.getElementById("board-setup").value);
+    generateBoard();
+    document.getElementById("board-setup").value = '';
+    speak("题板已生成。");
+  } catch {
+    alert("无效的 JSON 格式。");
+  }
+}
+
+function resetGame() {
+  boardData = JSON.parse(JSON.stringify(initialData));
+  generateBoard();
+  document.getElementById("results-body").innerHTML = '';
+  document.querySelectorAll(".team-score").forEach(input => input.value = 0);
+  document.getElementById("timer-display").textContent = formatTime(
+    parseInt(document.getElementById("timer-seconds").value) || 60
+  );
+  clearInterval(timer);
+}
+
+function printQA() {
+  let html = `<html><head><title>主持人问答</title></head><body><h2>问题与答案</h2>`;
+  for (const cat in boardData) {
+    html += `<h3>${cat}</h3><ul>`;
+    for (const val in boardData[cat]) {
+      const [q, a] = boardData[cat][val].split("|");
+      html += `<li><strong>$${val}：</strong> <em>${q}</em><br>答案：${a}</li>`;
+    }
+    html += `</ul>`;
+  }
+  html += `</body></html>`;
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  win.print();
+}
+
+document.getElementById("sound-toggle").addEventListener("change", () => {
+  document.getElementById("voice-status").textContent =
+    document.getElementById("sound-toggle").checked ? "🔊 语音：开启" : "🔇 语音：关闭";
+});
+
+generateBoard();
+</script>
+</body>
+</html>

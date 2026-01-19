@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>바벨 전투 - 어휘 제퍼디</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+
+    #game-container {
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #game-board-container {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    h1 {
+      margin: 10px 0;
+      font-size: 22px;
+    }
+
+    .top-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      margin: 10px 0;
+    }
+
+    .top-controls label {
+      font-size: 14px;
+    }
+
+    .top-controls input[type="number"],
+    .top-controls select {
+      padding: 4px;
+      font-size: 14px;
+    }
+
+    .top-controls input[type="checkbox"] {
+      transform: scale(1.2);
+      margin-right: 5px;
+    }
+
+    #timer-display {
+      font-weight: bold;
+      font-size: 18px;
+      color: #cc0000;
+    }
+
+    #voice-status {
+      font-size: 13px;
+      color: #555;
+    }
+
+    #jeopardy-board {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 5px;
+      width: 100%;
+      height: 65vh;
+      max-width: 100%;
+      overflow-y: auto;
+    }
+
+    .card {
+      background-color: #00274C;
+      color: white;
+      font-size: 1rem;
+      border-radius: 5px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 10px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .card.flipped {
+      background-color: #FFCB05;
+      color: black;
+    }
+
+    .category {
+      background-color: #3D3D3D;
+      font-weight: bold;
+    }
+
+    #setup-container {
+      margin-top: 10px;
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #setup-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    #board-setup {
+      flex: 1;
+      padding: 5px;
+      min-width: 250px;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 6px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .instructions {
+      font-size: 12px;
+      width: 100%;
+      max-width: 600px;
+      background: #fafafa;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px;
+      margin-top: 10px;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #score-table {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    #reset-button {
+      padding: 10px 15px;
+      font-size: 14px;
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .team-row {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+      margin: 5px 0;
+    }
+
+    .team-number {
+      width: 20px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .team-name, .team-score {
+      flex: 1;
+      margin: 0 5px;
+      padding: 5px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    #results-tally {
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    #results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    #results-table th, #results-table td {
+      border: 1px solid #ccc;
+      padding: 4px;
+    }
+
+    #results-table th {
+      background-color: #eee;
+    }
+
+    @media (max-width: 768px) {
+      #game-container {
+        flex-direction: column;
+        height: auto;
+      }
+
+      #jeopardy-board {
+        grid-template-columns: repeat(2, 1fr);
+        height: auto;
+      }
+
+      .card {
+        font-size: 1.1rem;
+        padding: 14px;
+      }
+
+      #score-table {
+        order: -1;
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .team-row {
+        width: 45%;
+        margin: 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="top-controls">
+  <label>타이머: <input type="number" id="timer-seconds" value="60" min="10" step="5"> 초</label>
+  <span id="timer-display">1:00</span>
+  <label><input type="checkbox" id="sound-toggle" checked> 음성 켜기</label>
+  <label><input type="checkbox" id="negative-toggle"> 감점 허용</label>
+  <label>데일리 더블:
+    <select id="daily-double-count">
+      <option value="0">0</option>
+      <option value="1" selected>1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+    </select>
+  </label>
+  <span id="voice-status">🔊 음성: 켜짐</span>
+</div>
+<div id="game-container">
+  <div id="game-board-container">
+    <h1>바벨 전투 - 어휘 제퍼디</h1>
+    <div id="jeopardy-board"></div>
+
+    <div id="setup-container">
+      <div id="setup-controls">
+        <input type="text" id="board-setup" placeholder="JSON 형식으로 보드 데이터를 입력하세요" />
+        <button onclick="setupBoard()">보드 생성</button>
+        <button onclick="printQA()">사회자용 질문/답변 출력</button>
+      </div>
+      <details class="instructions">
+        <summary><strong>보드 데이터 예시 보기</strong></summary>
+        <pre style="white-space: pre-wrap;">
+{
+  "문법": {
+    "200": "명사란?|사람, 장소 또는 사물을 나타내는 단어입니다.",
+    "400": "형용사란?|명사를 설명하는 단어입니다.",
+    ...
+  }
+}
+        </pre>
+      </details>
+    </div>
+  </div>
+
+  <div id="score-table">
+    <button id="reset-button" onclick="resetGame()">게임 초기화</button>
+    <h2>팀 점수</h2>
+
+    <div class="team-row" style="background-color: #ff9999;">
+      <div class="team-number">1</div>
+      <input type="text" class="team-name" value="팀 1" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #99ccff;">
+      <div class="team-number">2</div>
+      <input type="text" class="team-name" value="팀 2" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ccffcc;">
+      <div class="team-number">3</div>
+      <input type="text" class="team-name" value="팀 3" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ffcc99;">
+      <div class="team-number">4</div>
+      <input type="text" class="team-name" value="팀 4" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ccccff;">
+      <div class="team-number">5</div>
+      <input type="text" class="team-name" value="팀 5" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+    <div class="team-row" style="background-color: #ffccff;">
+      <div class="team-number">6</div>
+      <input type="text" class="team-name" value="팀 6" />
+      <input type="number" class="team-score" value="0" />
+    </div>
+
+    <div id="results-tally">
+      <h2>정답 기록</h2>
+      <table id="results-table">
+        <thead>
+          <tr>
+            <th>카테고리</th>
+            <th>금액</th>
+            <th>팀</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+let initialData = {
+  "카테고리 1": { "200": "질문|답변", "400": "질문|답변", "600": "질문|답변", "800": "질문|답변", "1000": "질문|답변" },
+  "카테고리 2": { "200": "질문|답변", "400": "질문|답변", "600": "질문|답변", "800": "질문|답변", "1000": "질문|답변" },
+  "카테고리 3": { "200": "질문|답변", "400": "질문|답변", "600": "질문|답변", "800": "질문|답변", "1000": "질문|답변" },
+  "카테고리 4": { "200": "질문|답변", "400": "질문|답변", "600": "질문|답변", "800": "질문|답변", "1000": "질문|답변" },
+  "카테고리 5": { "200": "질문|답변", "400": "질문|답변", "600": "질문|답변", "800": "질문|답변", "1000": "질문|답변" },
+  "카테고리 6": { "200": "질문|답변", "400": "질문|답변", "600": "질문|답변", "800": "질문|답변", "1000": "질문|답변" }
+};
+
+let boardData = JSON.parse(JSON.stringify(initialData));
+let dailyDoubles = new Set();
+let timerInterval = null;
+let timerDuration = 60;
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s < 10 ? "0" + s : s}`;
+}
+
+function speak(text) {
+  if (!document.getElementById("sound-toggle").checked) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "ko-KR";
+  window.speechSynthesis.speak(utterance);
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  let sec = parseInt(document.getElementById("timer-seconds").value) || 60;
+  timerDuration = sec;
+  document.getElementById("timer-display").textContent = formatTime(sec);
+
+  timerInterval = setInterval(() => {
+    sec--;
+    document.getElementById("timer-display").textContent = formatTime(sec);
+    if (sec <= 0) {
+      clearInterval(timerInterval);
+      document.getElementById("timer-display").textContent = "시간 종료!";
+      speak("시간이 다 됐습니다!");
+    }
+  }, 1000);
+}
+
+function getDailyDoubleCount() {
+  return parseInt(document.getElementById("daily-double-count").value) || 0;
+}
+
+function generateBoard() {
+  const board = document.getElementById("jeopardy-board");
+  board.innerHTML = '';
+  dailyDoubles.clear();
+
+  let eligible = [];
+  Object.keys(boardData).forEach(cat => {
+    ["600", "800", "1000"].forEach(value => {
+      eligible.push({ cat, value });
+    });
+  });
+
+  const count = getDailyDoubleCount();
+  while (dailyDoubles.size < count && eligible.length > 0) {
+    const idx = Math.floor(Math.random() * eligible.length);
+    const { cat, value } = eligible[idx];
+    dailyDoubles.add(`${cat}|${value}`);
+    eligible.splice(idx, 1);
+  }
+
+  Object.keys(boardData).forEach(cat => {
+    const header = document.createElement("div");
+    header.classList.add("card", "category");
+    header.textContent = cat;
+    board.appendChild(header);
+  });
+
+  const values = ["200", "400", "600", "800", "1000"];
+  values.forEach(value => {
+    Object.keys(boardData).forEach(cat => {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.dataset.cat = cat;
+      card.dataset.value = value;
+      card.dataset.isDD = dailyDoubles.has(`${cat}|${value}`);
+      const [q, a] = (boardData[cat][value] || "질문 없음|답변 없음").split("|");
+      card.dataset.q = q;
+      card.dataset.a = a;
+      card.dataset.flips = 0;
+      card.textContent = `$${value}`;
+      card.onclick = () => flipCard(card);
+      board.appendChild(card);
+    });
+  });
+}
+
+function flipCard(card) {
+  const flips = +card.dataset.flips;
+  if (flips === 0) {
+    card.classList.add("flipped");
+    card.dataset.flips = 1;
+
+    if (card.dataset.isDD === "true") {
+      speak("데일리 더블!");
+      const team = prompt("데일리 더블! 어떤 팀이 도전합니까? (이름 또는 번호)");
+      if (!team) return;
+
+      let max = 0;
+      document.querySelectorAll(".team-row").forEach((row, i) => {
+        const name = row.querySelector(".team-name").value.trim().toLowerCase();
+        const num = (i + 1).toString();
+        const score = parseInt(row.querySelector(".team-score").value) || 0;
+        if (name === team.trim().toLowerCase() || num === team.trim()) {
+          max = Math.max(500, score);
+        }
+      });
+
+      let bet = prompt(`얼마를 걸겠습니까? (최대 $${max})`);
+      bet = parseInt(bet);
+      if (isNaN(bet) || bet < 0 || bet > max) {
+        alert("잘못된 금액입니다.");
+        return;
+      }
+
+      card.dataset.bet = bet;
+      card.dataset.ddTeam = team;
+      card.textContent = `데일리 더블:\n${card.dataset.q}`;
+      speak(`데일리 더블! ${team} 팀, ${bet}점을 겁니다. 질문: ${card.dataset.q}`);
+    } else {
+      card.textContent = card.dataset.q;
+      speak(`${card.dataset.cat}, ${card.dataset.value}점. 질문: ${card.dataset.q}`);
+      startTimer();
+    }
+  } else if (flips === 1) {
+    card.textContent = card.dataset.a;
+    card.dataset.flips = 2;
+    clearInterval(timerInterval);
+    speak(`정답: ${card.dataset.a}`);
+    setTimeout(() => {
+      if (card.dataset.isDD === "true") {
+        handleDailyDouble(card);
+      } else {
+        selectTeam(card.dataset.cat, card.dataset.value);
+      }
+    }, 800);
+  } else {
+    card.classList.remove("flipped");
+    card.textContent = `$${card.dataset.value}`;
+    card.dataset.flips = 0;
+    clearInterval(timerInterval);
+    document.getElementById("timer-display").textContent = formatTime(timerDuration);
+  }
+}
+
+function handleDailyDouble(card) {
+  const team = card.dataset.ddTeam;
+  const bet = parseInt(card.dataset.bet);
+  document.querySelectorAll(".team-row").forEach((row, i) => {
+    const num = (i + 1).toString();
+    const nameInput = row.querySelector(".team-name");
+    const scoreInput = row.querySelector(".team-score");
+    if (
+      nameInput.value.trim().toLowerCase() === team.trim().toLowerCase() ||
+      num === team.trim()
+    ) {
+      const current = parseInt(scoreInput.value) || 0;
+      const correct = confirm("정답입니까?");
+      if (correct) {
+        scoreInput.value = current + bet;
+        speak(`${nameInput.value} 팀이 ${bet}점을 획득했습니다.`);
+      } else {
+        scoreInput.value = current - bet;
+        speak(`${nameInput.value} 팀이 ${bet}점을 잃었습니다.`);
+      }
+      const rowEl = document.createElement("tr");
+      rowEl.innerHTML = `<td>${card.dataset.cat}</td><td>${bet}</td><td>${team}</td>`;
+      document.getElementById("results-body").appendChild(rowEl);
+    }
+  });
+}
+
+function selectTeam(cat, val) {
+  const team = prompt("어떤 팀이 정답을 맞췄습니까? (이름 또는 번호)");
+  if (!team) return;
+  const value = parseInt(val);
+  document.querySelectorAll(".team-row").forEach((row, i) => {
+    const num = (i + 1).toString();
+    const nameInput = row.querySelector(".team-name");
+    const scoreInput = row.querySelector(".team-score");
+    if (
+      nameInput.value.trim().toLowerCase() === team.trim().toLowerCase() ||
+      num === team.trim()
+    ) {
+      let current = parseInt(scoreInput.value) || 0;
+      const allowNeg = document.getElementById("negative-toggle").checked;
+      const correct = confirm("정답입니까?");
+      if (correct) {
+        scoreInput.value = current + value;
+        speak(`${nameInput.value} 팀이 ${value}점을 획득했습니다.`);
+      } else if (allowNeg) {
+        scoreInput.value = current - value;
+        speak(`${nameInput.value} 팀이 ${value}점을 잃었습니다.`);
+      }
+      const rowEl = document.createElement("tr");
+      rowEl.innerHTML = `<td>${cat}</td><td>$${val}</td><td>${team}</td>`;
+      document.getElementById("results-body").appendChild(rowEl);
+    }
+  });
+}
+
+function setupBoard() {
+  try {
+    boardData = JSON.parse(document.getElementById("board-setup").value);
+    generateBoard();
+    document.getElementById("board-setup").value = '';
+    speak("보드가 생성되었습니다.");
+  } catch {
+    alert("유효하지 않은 JSON 형식입니다.");
+  }
+}
+
+function resetGame() {
+  boardData = JSON.parse(JSON.stringify(initialData));
+  generateBoard();
+  document.getElementById("results-body").innerHTML = '';
+  document.querySelectorAll(".team-score").forEach(input => input.value = 0);
+  document.getElementById("timer-display").textContent = formatTime(
+    parseInt(document.getElementById("timer-seconds").value) || 60
+  );
+  clearInterval(timerInterval);
+}
+
+function printQA() {
+  let html = `<html><head><title>질문/답변</title></head><body><h2>사회자용 질문/답변 시트</h2>`;
+  for (const cat in boardData) {
+    html += `<h3>${cat}</h3><ul>`;
+    for (const val in boardData[cat]) {
+      const [q, a] = boardData[cat][val].split("|");
+      html += `<li><strong>$${val}:</strong> <em>${q}</em><br>답변: ${a}</li>`;
+    }
+    html += `</ul>`;
+  }
+  html += `</body></html>`;
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  win.print();
+}
+
+document.getElementById("sound-toggle").addEventListener("change", () => {
+  document.getElementById("voice-status").textContent =
+    document.getElementById("sound-toggle").checked ? "🔊 음성: 켜짐" : "🔇 음성: 꺼짐";
+});
+
+generateBoard();
+</script>
+</body>
+</html>
